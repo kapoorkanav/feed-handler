@@ -1,6 +1,6 @@
 #pragma once
 
-#include "itch_messages.hpp"
+#include "common/itch_messages.hpp"
 
 #include <cstdint>
 #include <list>

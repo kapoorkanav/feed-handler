@@ -12,28 +12,33 @@ add_compile_options(-Wall -Wextra)
 
 include_directories(include)
 
-# Shared library: everything main_naive and the tests both need,
-# so we compile order_book.cpp/itch_reader.cpp exactly once.
-add_library(feedhandler_core
-    src/order_book.cpp
-    src/itch_reader.cpp
+# Shared across every version (v1, v2, v3): the wire-format parser, the
+# MoldUDP64 header helpers, and the mmap file reader never change as we
+# optimize -- only the order book / receiver / threading model do.
+add_library(common_lib
+    src/common/itch_reader.cpp
 )
 
-add_executable(feed_naive src/main_naive.cpp)
-target_link_libraries(feed_naive PRIVATE feedhandler_core)
+add_executable(replay_sender src/common/replay_sender.cpp)
+target_link_libraries(replay_sender PRIVATE common_lib)
 
-add_executable(replay_sender src/replay_sender.cpp)
-target_link_libraries(replay_sender PRIVATE feedhandler_core)
+# --- v1: naive baseline (std::map book, blocking sockets) ---
+add_library(v1_lib
+    src/v1/order_book.cpp
+)
 
-add_executable(feed_receiver src/feed_receiver.cpp)
-target_link_libraries(feed_receiver PRIVATE feedhandler_core)
+add_executable(feed_v1 src/v1/main.cpp)
+target_link_libraries(feed_v1 PRIVATE common_lib v1_lib)
+
+add_executable(receiver_v1 src/v1/receiver.cpp)
+target_link_libraries(receiver_v1 PRIVATE common_lib v1_lib)
 
 enable_testing()
 
-add_executable(test_itch_parse tests/test_itch_parse.cpp)
+add_executable(test_itch_parse tests/common/test_itch_parse.cpp)
 
-add_executable(test_order_book tests/test_order_book.cpp)
-target_link_libraries(test_order_book PRIVATE feedhandler_core)
+add_executable(test_v1_order_book tests/v1/test_order_book.cpp)
+target_link_libraries(test_v1_order_book PRIVATE v1_lib)
 
 add_test(NAME itch_parse COMMAND test_itch_parse)
-add_test(NAME order_book COMMAND test_order_book)
+add_test(NAME v1_order_book COMMAND test_v1_order_book)

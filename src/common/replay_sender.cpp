@@ -1,5 +1,5 @@
-#include "itch_reader.hpp"
-#include "mold_udp64.hpp"
+#include "common/itch_reader.hpp"
+#include "common/mold_udp64.hpp"
 
 #include <cstdio>
 #include <cstring>

@@ -1,4 +1,4 @@
-#include "itch_messages.hpp"
+#include "common/itch_messages.hpp"
 
 #include <cassert>
 #include <cstdio>

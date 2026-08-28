@@ -1,4 +1,4 @@
-#include "itch_reader.hpp"
+#include "common/itch_reader.hpp"
 
 namespace itch{
     ItchFileReader::ItchFileReader(const std::string& path){
