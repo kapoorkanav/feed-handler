@@ -33,6 +33,10 @@ target_link_libraries(feed_v1 PRIVATE common_lib v1_lib)
 add_executable(receiver_v1 src/v1/receiver.cpp)
 target_link_libraries(receiver_v1 PRIVATE common_lib v1_lib)
 
+# --- v2: io_uring receiver (same book/parser as v1, async batched ingestion) ---
+add_executable(receiver_v2 src/v2/receiver.cpp)
+target_link_libraries(receiver_v2 PRIVATE common_lib v1_lib uring)
+
 enable_testing()
 
 add_executable(test_itch_parse tests/common/test_itch_parse.cpp)
