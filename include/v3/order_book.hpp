@@ -2,6 +2,7 @@
 
 #include "common/itch_messages.hpp"
 #include "v3/object_pool.hpp"
+#include "v3/ref_table.hpp"
 
 #include <cstdint>
 #include <map>
@@ -24,7 +25,7 @@ namespace v3{
             static constexpr uint32_t kWindow=1024;
             static constexpr uint32_t kAskBase=kWindow;
 
-            explicit OrderBook(OrderPool& pool);
+            explicit OrderBook(OrderPool& pool, RefTable& refs);
 
             void add_order(const itch::AddOrder& m);
             void execute_order(const itch::OrderExecuted& m);
@@ -44,6 +45,7 @@ namespace v3{
             void rescan_best(char side);
 
             OrderPool& pool_;
+            RefTable& refs_;
 
             int64_t base_cents_=-1;
             bool base_set_=false;
@@ -55,6 +57,5 @@ namespace v3{
             int32_t best_bid_idx_=-1;
             int32_t best_ask_idx_=-1;
 
-            std::unordered_map<uint64_t, uint32_t> ref_index_;
     };
 }

@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
     std::unordered_map<uint16_t, feedhandler::OrderBook> v1_books;
     std::unordered_map<uint16_t, v3::OrderBook> v3_books;
     v3::OrderPool pool(kPoolCapacity);
+    v3::RefTable refs(1u << 18);
 
     uint64_t msg_count = 0, compared = 0, mismatches = 0;
 
@@ -43,7 +44,7 @@ int main(int argc, char** argv) {
                 auto m = itch::AddOrder::parse(msg);
                 locate = m.stock_locate;
                 v1_books[locate].add_order(m);
-                v3_books.try_emplace(locate, pool).first->second.add_order(m);
+                v3_books.try_emplace(locate, pool, refs).first->second.add_order(m);
                 touched = true;
                 break;
             }
@@ -51,7 +52,7 @@ int main(int argc, char** argv) {
                 auto m = itch::OrderExecuted::parse(msg);
                 locate = m.stock_locate;
                 v1_books[locate].execute_order(m);
-                v3_books.try_emplace(locate, pool).first->second.execute_order(m);
+                v3_books.try_emplace(locate, pool, refs).first->second.execute_order(m);
                 touched = true;
                 break;
             }
@@ -59,7 +60,7 @@ int main(int argc, char** argv) {
                 auto m = itch::OrderCancel::parse(msg);
                 locate = m.stock_locate;
                 v1_books[locate].cancel_order(m);
-                v3_books.try_emplace(locate, pool).first->second.cancel_order(m);
+                v3_books.try_emplace(locate, pool, refs).first->second.cancel_order(m);
                 touched = true;
                 break;
             }
@@ -67,7 +68,7 @@ int main(int argc, char** argv) {
                 auto m = itch::OrderDelete::parse(msg);
                 locate = m.stock_locate;
                 v1_books[locate].delete_order(m);
-                v3_books.try_emplace(locate, pool).first->second.delete_order(m);
+                v3_books.try_emplace(locate, pool, refs).first->second.delete_order(m);
                 touched = true;
                 break;
             }
@@ -75,7 +76,7 @@ int main(int argc, char** argv) {
                 auto m = itch::OrderReplace::parse(msg);
                 locate = m.stock_locate;
                 v1_books[locate].replace_order(m);
-                v3_books.try_emplace(locate, pool).first->second.replace_order(m);
+                v3_books.try_emplace(locate, pool, refs).first->second.replace_order(m);
                 touched = true;
                 break;
             }

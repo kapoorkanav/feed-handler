@@ -19,7 +19,8 @@ int main(int argc, char** argv) {
     itch::ItchFileReader reader(argv[1]);
     feedhandler::OrderBook v1;
     v3::OrderPool pool(1u << 20);
-    v3::OrderBook v3b(pool);
+    v3::RefTable refs(1u << 18);
+    v3::OrderBook v3b(pool, refs);
 
     uint64_t n = 0, shown = 0;
     const uint8_t* msg;

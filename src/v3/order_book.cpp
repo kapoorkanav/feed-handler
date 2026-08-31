@@ -1,7 +1,7 @@
 #include "v3/order_book.hpp"
 
 namespace v3{
-    OrderBook::OrderBook(OrderPool& pool): pool_(pool), levels_(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0,0}){}
+    OrderBook::OrderBook(OrderPool& pool, RefTable& refs): pool_(pool), refs_(refs), levels_(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0,0}){}
 
     char OrderBook::side_of(uint32_t level_idx) const{
         if(level_idx<kAskBase) return 'B';
@@ -121,18 +121,17 @@ namespace v3{
         if(idx==kNullIdx) return;
         uint32_t li=level_for(m.price, m.side);
         link_order(li, idx, m.shares);
-        ref_index_[m.order_ref]=idx;
+        refs_.insert(m.order_ref, idx);
     }
 
     void OrderBook::execute_order(const itch::OrderExecuted& m){
-        auto it=ref_index_.find(m.order_ref);
-        if(it==ref_index_.end()) return;
-        uint32_t idx=it->second;
+        uint32_t idx=refs_.find(m.order_ref);
+        if(idx==kNullIdx) return;
         PooledOrder& o=pool_[idx];
         if(m.executed_shares>=o.qty){
             unlink_order(idx);
             pool_.release(idx);
-            ref_index_.erase(it);
+            refs_.erase(m.order_ref);
         }
         else{
             levels_[o.level_idx].total_qty-=m.executed_shares;
@@ -141,14 +140,13 @@ namespace v3{
     }
 
     void OrderBook::cancel_order(const itch::OrderCancel& m){
-        auto it=ref_index_.find(m.order_ref);
-        if(it==ref_index_.end()) return;
-        uint32_t idx=it->second;
+        uint32_t idx=refs_.find(m.order_ref);
+        if(idx==kNullIdx) return;
         PooledOrder &o=pool_[idx];
         if(m.canceled_shares>=o.qty){
             unlink_order(idx);
             pool_.release(idx);
-            ref_index_.erase(it);
+            refs_.erase(m.order_ref);
         }
         else{
             levels_[o.level_idx].total_qty-=m.canceled_shares;
@@ -157,29 +155,27 @@ namespace v3{
     }
 
     void OrderBook::delete_order(const itch::OrderDelete& m){
-        auto it=ref_index_.find(m.order_ref);
-        if(it==ref_index_.end()) return;
-        uint32_t idx=it->second;
+        uint32_t idx=refs_.find(m.order_ref);
+        if(idx==kNullIdx) return;
         unlink_order(idx);
         pool_.release(idx);
-        ref_index_.erase(it);
+        refs_.erase(m.order_ref);
     }
 
     void OrderBook::replace_order(const itch::OrderReplace& m){
-        auto it=ref_index_.find(m.original_order_ref);
-        if(it==ref_index_.end()) return;
-        uint32_t old_idx=it->second;
+        uint32_t old_idx=refs_.find(m.original_order_ref);
+        if(old_idx==kNullIdx) return;
         char side=side_of(pool_[old_idx].level_idx);
 
         unlink_order(old_idx);
         pool_.release(old_idx);
-        ref_index_.erase(it);
+        refs_.erase(m.original_order_ref);
 
         uint32_t idx=pool_.allocate();
         if(idx==kNullIdx) return;
         uint32_t li=level_for(m.price, side);
         link_order(li, idx, m.shares);
-        ref_index_[m.new_order_ref]=idx;
+        refs_.insert(m.new_order_ref, idx);
     }
 
     std::optional<std::pair<uint32_t, uint32_t>> OrderBook::best_bid_ask() const {
