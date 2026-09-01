@@ -1,7 +1,12 @@
 #include "v3/order_book.hpp"
 
 namespace v3{
-    OrderBook::OrderBook(OrderPool& pool, RefTable& refs): pool_(pool), refs_(refs), levels_(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0,0}){}
+    // OrderBook::OrderBook(OrderPool& pool, RefTable& refs): pool_(pool), refs_(refs), levels_(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0,0}){}
+    OrderBook::OrderBook(OrderPool& pool, RefTable& refs)
+        : pool_(pool), refs_(refs),
+          levels_(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0, 0}) {
+        levels_.reserve(2*kWindow + 512);
+    }
 
     char OrderBook::side_of(uint32_t level_idx) const{
         if(level_idx<kAskBase) return 'B';
@@ -61,6 +66,10 @@ namespace v3{
         lvl.order_count++;
         lvl.total_qty+=qty;
 
+        if(level_idx<2*kWindow){
+            occupied_[level_idx>>6] |= (1ull<<(level_idx&63));
+        }
+
         if(level_idx<kAskBase){
             if(static_cast<int32_t>(level_idx)>best_bid_idx_){
                 best_bid_idx_=static_cast<int32_t>(level_idx);
@@ -88,31 +97,49 @@ namespace v3{
         lvl.order_count--;
 
         if(lvl.head_idx==kNullIdx){
+            if(level_idx<2*kWindow){
+                occupied_[level_idx>>6] &= ~(1ull<<(level_idx&63));
+            }
             if(static_cast<int32_t>(level_idx)==best_bid_idx_) rescan_best('B');
             if(static_cast<int32_t>(level_idx)==best_ask_idx_) rescan_best('S');
         }
     }
 
+    int32_t OrderBook::find_prev_set(int32_t from) const{
+        if(from<0) return -1;
+        int32_t w=from>>6;
+        int32_t b=from&63;
+        uint64_t word=occupied_[w]&((b==63)?~0ull:((1ull<<(b+1))-1));
+        while(true){
+            if(word) return (w<<6)+(63-__builtin_clzll(word));
+            if(w==0) return -1;
+            --w;
+            word=occupied_[w];
+        }
+    }
+
+    int32_t OrderBook::find_next_set(int32_t from) const {
+        constexpr int32_t limit=2*kWindow;
+        if(from>=limit) return -1;
+        if(from<0) from=0;
+        int32_t w=from>>6;
+        int32_t b=from&63;
+        uint64_t word=occupied_[w]&(~0ull<<b);
+        constexpr int32_t last_word=(limit-1)>>6;
+        while(true){
+            if(word) return (w<<6)+__builtin_ctzll(word);
+            if(w>=last_word) return -1;
+            ++w;
+            word=occupied_[w];
+        }
+    }
+
     void OrderBook::rescan_best(char side){
         if(side=='B'){
-            int32_t i=best_bid_idx_;
-            best_bid_idx_=-1;
-            for(;i>=0;i--){
-                if(levels_[i].head_idx!=kNullIdx){
-                    best_bid_idx_=i;
-                    break;
-                }
-            }
+            best_bid_idx_=find_prev_set(best_bid_idx_);
         }
         else{
-            int32_t i=best_ask_idx_;
-            best_ask_idx_=-1;
-            for(;i<static_cast<int32_t>(2*kWindow);i++){
-                if(levels_[i].head_idx!=kNullIdx){
-                    best_ask_idx_=i;
-                    break;
-                }
-            }
+            best_ask_idx_=find_next_set(best_ask_idx_);
         }
     }
 

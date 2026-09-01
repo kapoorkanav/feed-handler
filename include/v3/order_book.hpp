@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <array>
 
 namespace v3{
     struct PriceLevel{
@@ -56,6 +57,10 @@ namespace v3{
 
             int32_t best_bid_idx_=-1;
             int32_t best_ask_idx_=-1;
+            int32_t find_prev_set(int32_t from) const;
+            int32_t find_next_set(int32_t from) const;
+
+            std::array<uint64_t, (2*kWindow)/64> occupied_{};
 
     };
 }
