@@ -50,6 +50,10 @@ add_library(v3_lib
 add_executable(feed_v3 src/v3/main.cpp)
 target_link_libraries(feed_v3 PRIVATE common_lib v3_lib)
 
+# Per-message latency percentiles via rdtsc. x86 only; needs both books.
+add_executable(bench_latency src/common/bench_latency.cpp)
+target_link_libraries(bench_latency PRIVATE common_lib v1_lib v3_lib)
+
 enable_testing()
 
 add_executable(test_v1_v3_equivalence tests/v3/test_v1_v3_equivalence.cpp)
