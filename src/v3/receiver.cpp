@@ -18,6 +18,7 @@ constexpr const char* kMulticastAddr="239.1.1.1";
 constexpr uint16_t kPort=30000;
 constexpr unsigned kQueueDepth=32;
 constexpr size_t kBufSize=2048;
+constexpr uint16_t kMaxSymbols=9000;
 
 int main(){
     int sock=socket(AF_INET, SOCK_DGRAM, 0);
@@ -62,6 +63,15 @@ int main(){
 
     std::vector<std::vector<uint8_t>> bufs(kQueueDepth, std::vector<uint8_t> (kBufSize));
 
+    v3::OrderPool pool(1u << 20);
+    v3::RefTable refs(1u << 18);
+    std::unordered_map<uint16_t, v3::OrderBook> books;
+
+    books.reserve(kMaxSymbols);
+    for(uint16_t i=1;i<=kMaxSymbols;i++){
+        books.try_emplace(i, pool, refs);
+    }
+
     auto prep_recv=[&](unsigned idx){
         struct io_uring_sqe* sqe=io_uring_get_sqe(&ring);
         io_uring_prep_recv(sqe, sock, bufs[idx].data(), kBufSize, 0);
@@ -73,9 +83,6 @@ int main(){
     }
     io_uring_submit(&ring);
 
-    v3::OrderPool pool(1u << 20);
-    v3::RefTable refs(1u << 18);
-    std::unordered_map<uint16_t, v3::OrderBook> books;
     uint64_t high_seq=0;
     std::map<uint64_t, uint16_t> pending_gaps;
     uint64_t packets=0, messages=0, gaps=0, dups=0, truly_lost=0, recovered=0;
