@@ -9,8 +9,8 @@ rather than guessed at.
 
 ## Status
 
-Work in progress. The order book is done, benchmarked for throughput and
-latency. Wiring the v3 book into the io_uring receiver is next.
+Work in progress. Order book and receivers are done and benchmarked for
+throughput, latency and packet loss. Write-up is next.
 
 ## Versions
 
@@ -70,6 +70,33 @@ replacing it with one bit per level and `__builtin_ctzll` took p99.9 from
 
 `max` is deliberately not reported. It is dominated by scheduler preemption —
 the same binary produced 55 us and 496 us on consecutive runs.
+
+### The optimized book dropped packets the slow one didn't
+
+Replaying the feed over multicast at 1M messages/sec, v1 and v2 lost nothing
+but v3 lost about 44,000 messages — the version with the *faster* book. Two
+guesses at the cause were both wrong. `perf stat` settled it:
+
+| | v2 | v3 |
+| --- | --- | --- |
+| page faults | 3,164 | 53,330 |
+| user time | 1.53 s | 1.07 s |
+
+v3 does 30% less work in user space and takes 17x the page faults. Each symbol's
+book eagerly builds a 2048-entry price level array, so the first message for a
+symbol faults in 40 KB. Across ~6,000 symbols that is 238 MB faulted in lazily,
+mid-feed, and the receive loop stalls while the kernel services it. v1 grows a
+`std::map` incrementally and never pays it in one go.
+
+The fix is to construct every symbol's book at startup, before the socket is
+armed, which is what real handlers do before market open. Page faults went *up*
+(83,231, since it now pre-creates 9,000 books rather than the ~6,000 the file
+uses) but they all happen before any packet arrives. Loss went to zero, at the
+default 208 KB socket buffer with no sysctl tuning.
+
+The lesson is that the throughput benchmark could not have caught this. A file
+replay has no deadline, so a stall just makes it finish later; on a live feed
+the same stall drops data.
 
 ## Building
 
