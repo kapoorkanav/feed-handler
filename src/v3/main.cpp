@@ -8,7 +8,8 @@
 #include <unordered_map>
 
 namespace {
-constexpr size_t kPoolCapacity = 1u << 20;  // measured peak live orders ~76k
+constexpr size_t kPoolCapacity = 1u << 20;  // 262144 slots; ~76k
+constexpr size_t kRefCapacity = 1u << 18;  
 }
 
 int main(int argc, char** argv){
@@ -19,8 +20,8 @@ int main(int argc, char** argv){
 
     itch::ItchFileReader reader(argv[1]);
     v3::OrderPool pool(kPoolCapacity);
+    v3::RefTable refs(kRefCapacity);
     std::unordered_map<uint16_t, v3::OrderBook> books;
-    v3::RefTable refs((1u<<18));
 
     uint64_t msg_count=0;
     const uint8_t* msg;

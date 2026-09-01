@@ -50,6 +50,10 @@ add_library(v3_lib
 add_executable(feed_v3 src/v3/main.cpp)
 target_link_libraries(feed_v3 PRIVATE common_lib v3_lib)
 
+# io_uring ingestion + the optimized book: the fully optimized end-to-end path.
+add_executable(receiver_v3 src/v3/receiver.cpp)
+target_link_libraries(receiver_v3 PRIVATE common_lib v3_lib uring)
+
 # Per-message latency percentiles via rdtsc. x86 only; needs both books.
 add_executable(bench_latency src/common/bench_latency.cpp)
 target_link_libraries(bench_latency PRIVATE common_lib v1_lib v3_lib)
