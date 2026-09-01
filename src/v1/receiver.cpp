@@ -29,7 +29,7 @@ int main(){
     addr.sin_addr.s_addr=htonl(INADDR_ANY);
     addr.sin_port=htons(kPort);
 
-    int want_rcvbuf = 16 * 1024 * 1024;
+    int want_rcvbuf = 64 * 1024 * 1024;
     setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &want_rcvbuf, sizeof(want_rcvbuf));
 
     int got_rcvbuf = 0;

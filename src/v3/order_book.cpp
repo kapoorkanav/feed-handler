@@ -1,12 +1,12 @@
 #include "v3/order_book.hpp"
 
 namespace v3{
-    // OrderBook::OrderBook(OrderPool& pool, RefTable& refs): pool_(pool), refs_(refs), levels_(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0,0}){}
-    OrderBook::OrderBook(OrderPool& pool, RefTable& refs)
-        : pool_(pool), refs_(refs),
-          levels_(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0, 0}) {
+        OrderBook::OrderBook(OrderPool& pool, RefTable& refs)
+        : pool_(pool), refs_(refs) {
         levels_.reserve(2*kWindow + 512);
+        levels_.resize(2*kWindow, PriceLevel{kNullIdx, kNullIdx, 0, 0});
     }
+
 
     char OrderBook::side_of(uint32_t level_idx) const{
         if(level_idx<kAskBase) return 'B';

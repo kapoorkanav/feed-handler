@@ -26,6 +26,13 @@ int main(){
         return 1;
     }
     
+    int want_rcvbuf = 64 * 1024 * 1024;
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &want_rcvbuf, sizeof(want_rcvbuf));
+    int got_rcvbuf = 0;
+    socklen_t rcvbuf_len = sizeof(got_rcvbuf);
+    getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &got_rcvbuf, &rcvbuf_len);
+    std::printf("rcvbuf requested=%d granted=%d\n", want_rcvbuf, got_rcvbuf);
+
     int reuse=1;
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
