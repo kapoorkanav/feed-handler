@@ -24,23 +24,23 @@ and a proper write-up are next.
 
 ## Results
 
-Replaying 7,040,650 real messages from a NASDAQ sample file, single threaded,
+Replaying 7,042,255 real messages from a NASDAQ sample file, single threaded,
 median of 5 runs. Book work is isolated by subtracting a parse-only baseline
-(0.110 s) that reads and decodes every message but touches no book.
+(0.092 s) that reads and decodes every message but touches no book.
+
+Azure F2s_v2, Intel Xeon Platinum 8370C (Ice Lake) @ 2.8 GHz, Ubuntu 24.04,
+gcc 13, -O2.
 
 | | total | book only | per message |
 | --- | --- | --- | --- |
-| v1 | 0.893 s | 0.783 s | 116 ns |
-| v3, array + pool | 0.666 s | 0.556 s | 82 ns |
-| v3, + flat hash | 0.480 s | 0.370 s | 55 ns |
+| v1 | 0.942 s | 0.850 s | 126 ns |
+| v3 | 0.574 s | 0.482 s | 71 ns |
 
-2.1x on book work, 1.86x end to end. The flat hash table was worth more than
-the array itself, which was not the obvious guess going in — the order lookup
-runs on every message, the price level array only helps adds.
+1.76x on book work, 1.64x end to end.
 
 v3 is checked against v1 message by message. `test_v1_v3_equivalence` replays
 the same file through both books and compares top of book after every update:
-6,772,295 comparisons, no mismatches.
+6,773,112 comparisons, no mismatches.
 
 ## Building
 
@@ -79,9 +79,3 @@ For the multicast path, run the receiver and the replay sender together:
 ./build/replay_sender data/sample.itch50
 ```
 
-## Notes
-
-The numbers above were taken on an aarch64 VM whose counter only ticks every
-42 ns, which is too coarse to measure a 55 ns operation. Throughput is fine;
-per-message latency percentiles are not, and are being redone on x86 where
-`rdtsc` is available.
