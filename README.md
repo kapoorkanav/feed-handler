@@ -9,8 +9,8 @@ rather than guessed at.
 
 ## Status
 
-Work in progress. The order book is done and benchmarked. Latency percentiles
-and a proper write-up are next.
+Work in progress. The order book is done, benchmarked for throughput and
+latency. Wiring the v3 book into the io_uring receiver is next.
 
 ## Versions
 
@@ -41,6 +41,35 @@ gcc 13, -O2.
 v3 is checked against v1 message by message. `test_v1_v3_equivalence` replays
 the same file through both books and compares top of book after every update:
 6,773,112 comparisons, no mismatches.
+
+### Latency
+
+Per-message book update time, measured with `rdtsc` around the book call only —
+the symbol lookup happens before the first timestamp, so it is excluded from
+both. Exact percentiles over all 6,773,112 samples. The 17.9 ns cost of the two
+timestamp reads is included in every figure below rather than subtracted.
+
+| | v1 | v3 |
+| --- | --- | --- |
+| p50 | 124.6 ns | 67.3 ns |
+| p90 | 201.2 ns | 143.2 ns |
+| p99 | 368.0 ns | 384.5 ns |
+| p99.9 | 853.4 ns | 651.5 ns |
+| p99.99 | 6298 ns | 2393 ns |
+
+v3 wins everywhere except p99, where the two are level. The likely reason is
+the overflow path: prices outside the 1024 cent window fall back to a
+`std::map`, which is exactly v1's structure, and that is about 6% of orders.
+
+Getting here took two fixes that were invisible in throughput and only showed
+up in the tail. Growing the price level vector reallocated and copied the whole
+array, costing 18 us at p99.99; reserving headroom cut that to 2.2 us. Scanning
+for the next best price after a level emptied walked up to 1024 entries;
+replacing it with one bit per level and `__builtin_ctzll` took p99.9 from
+795 ns to 652 ns.
+
+`max` is deliberately not reported. It is dominated by scheduler preemption —
+the same binary produced 55 us and 496 us on consecutive runs.
 
 ## Building
 
