@@ -27,6 +27,10 @@ target_link_libraries(replay_sender PRIVATE common_lib)
 add_executable(bench_parse_only src/common/bench_parse_only.cpp)
 target_link_libraries(bench_parse_only PRIVATE common_lib)
 
+# Profiles the sample data to size the v3 price level window and object pool.
+add_executable(analyze_data src/common/analyze_data.cpp)
+target_link_libraries(analyze_data PRIVATE common_lib)
+
 # --- v1: naive baseline (std::map book, blocking sockets) ---
 add_library(v1_lib
     src/v1/order_book.cpp
@@ -68,8 +72,19 @@ target_link_libraries(trace_symbol PRIVATE common_lib v1_lib v3_lib)
 
 add_executable(test_itch_parse tests/common/test_itch_parse.cpp)
 
+add_executable(test_ref_table tests/v3/test_ref_table.cpp)
+
+# Release defines NDEBUG, which compiles assert() away entirely and leaves these
+# tests passing without checking anything. Keep assertions live.
+target_compile_options(test_itch_parse PRIVATE -UNDEBUG)
+
 add_executable(test_v1_order_book tests/v1/test_order_book.cpp)
 target_link_libraries(test_v1_order_book PRIVATE v1_lib)
+target_compile_options(test_v1_order_book PRIVATE -UNDEBUG)
 
 add_test(NAME itch_parse COMMAND test_itch_parse)
 add_test(NAME v1_order_book COMMAND test_v1_order_book)
+add_test(NAME ref_table COMMAND test_ref_table)
+
+# test_v1_v3_equivalence needs a sample data file, so it is not registered here.
+# Run it manually: ./build/test_v1_v3_equivalence data/sample.itch50
