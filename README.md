@@ -9,8 +9,10 @@ rather than guessed at.
 
 ## Status
 
-Work in progress. Order book and receivers are done and benchmarked for
-throughput, latency and packet loss. Write-up is next.
+Order book and receivers are done and benchmarked for throughput, latency and
+packet loss. Not done: gap recovery by retransmission request, a lock free
+handoff between the network and processing threads, and huge pages to cut the
+page fault count rather than just move it off the hot path.
 
 ## Architecture
 
