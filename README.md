@@ -158,6 +158,36 @@ The lesson is that the throughput benchmark could not have caught this. A file
 replay has no deadline, so a stall just makes it finish later; on a live feed
 the same stall drops data.
 
+### io_uring only helps when you are behind
+
+v2 is the same receiver as v1 with io_uring instead of blocking reads. At the
+rate the feed normally runs it did nothing useful. Only under heavy load did it
+pay off, and then by a lot.
+
+| rate | | syscalls | messages lost |
+| --- | --- | --- | --- |
+| 1M/s | v1 | 152,628 | 0 |
+| | v2 | 140,668 | 0 |
+| 3M/s | v1 | 152,627 | 0 |
+| | v2 | 9,377 | 0 |
+| flat out | v1 | 139,801 | 588,048 |
+| | v2 | 4,976 | 3,812 |
+
+The point of io_uring is that you can collect many finished reads in one call
+instead of asking for them one at a time. That only works if several have
+finished while you were busy with something else. At 1M messages a second the
+receiver keeps up comfortably, so there is never more than one waiting, and it
+ends up making about as many calls as the blocking version while doing more work
+per call.
+
+Push it harder and reads start piling up between wake ups. At 3M a second each
+call collects about 16 of them, and flat out about 30. That is where it wins: 28
+times fewer system calls and 154 times fewer dropped messages.
+
+So the benefit is load dependent. Measuring only at a comfortable rate would
+have said io_uring was useless here, which is the opposite of what happens when
+it actually matters.
+
 ## Design decisions
 
 **Array of price levels instead of a tree.** Every node of a `std::map` is a
